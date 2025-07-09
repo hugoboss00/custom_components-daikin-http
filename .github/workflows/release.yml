@@ -40,4 +40,4 @@ jobs:
             Version: `${{ steps.get_version.outputs.version }}`
             Check commit history for changes.
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
