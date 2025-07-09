@@ -2,7 +2,7 @@
 
 import logging
 import requests
-import aiohttp
+# import aiohttp
 
 
 from homeassistant.components.climate import (
@@ -44,11 +44,17 @@ class DaikinHttpClimate(ClimateEntity):
         """Initialize the climate device."""
         self.coordinator = coordinator
         self._host = coordinator.host
-        self._name = "Daikin A/C"
+        self._name = (
+            coordinator.config_entry.options.get("name")
+            or coordinator.config_entry.data.get("name")
+            or "Daikin HTTP AC"
+        )
+        self._attr_name = self._name
         self._hvac_mode = HVACMode.OFF
         self._target_temperature = 25
         self._current_temperature = None
         self._available = True
+        self._attr_unique_id = f"daikin_http_{self._host}"
 
     @property
     def name(self):
@@ -88,7 +94,18 @@ class DaikinHttpClimate(ClimateEntity):
     @property
     def current_temperature(self):
         """Return the current temperature."""
-        return self.coordinator.data.get("temp")
+        return self._target_temperature
+
+    #        return self.coordinator.data.get("temp")
+
+    @property
+    def device_info(self):
+        return {
+            "identifiers": {(DOMAIN, self._host)},
+            "name": self._name,
+            "manufacturer": "Daikin",
+            "model": "HTTP API",
+        }
 
     def _get_status(self):
         """Poll the A/C status via HTTP and update internal state."""
@@ -113,22 +130,15 @@ class DaikinHttpClimate(ClimateEntity):
 
     async def async_set_temperature(self, **kwargs):
         """Set new target temperature."""
-        temperature = int(kwargs.get(ATTR_TEMPERATURE))
-        url = f"http://{self._host}/sendDaikin?temp={temperature}"
-        _LOGGER.debug("Setting temperature to %s, %s", temperature, url)
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url, timeout=5) as resp:
-                text = await resp.text()
-                _LOGGER.debug("response %s", text)
-        await self.coordinator.async_request_refresh()
+        temp = kwargs.get(ATTR_TEMPERATURE)
+        if temp is not None:
+            await self.coordinator.set_temperature(temp)
+            await self.coordinator.async_request_refresh()
 
     async def async_set_hvac_mode(self, hvac_mode):
         """Set HVAC mode (on/off)."""
-        run_value = 1 if hvac_mode == HVACMode.COOL else 0
-        url = f"http://{self._host}/sendDaikin?run={run_value}"
-        _LOGGER.debug("Setting run mode to %s, %s", run_value, url)
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url, timeout=5) as resp:
-                text = await resp.text()
-                _LOGGER.debug("response %s", text)
+        if hvac_mode == HVACMode.COOL:
+            await self.coordinator.set_power(True)
+        elif hvac_mode == HVACMode.OFF:
+            await self.coordinator.set_power(False)
         await self.coordinator.async_request_refresh()

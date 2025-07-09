@@ -1,9 +1,11 @@
 """Handles the config flow for Daikin HTTP integration."""
 
-from homeassistant import config_entries
 import voluptuous as vol
+from homeassistant import config_entries
+from homeassistant.core import callback
 
 from .const import DOMAIN, CONF_HOST
+from .options_flow import DaikinHttpOptionsFlowHandler
 
 
 class DaikinHttpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -17,7 +19,7 @@ class DaikinHttpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         if user_input is not None:
             # Create config entry with user data
-            return self.async_create_entry(title="Daikin HTTP AC", data=user_input)
+            return self.async_create_entry(title=user_input["name"], data=user_input)
 
         # Show the config form
         return self.async_show_form(
@@ -25,7 +27,13 @@ class DaikinHttpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             data_schema=vol.Schema(
                 {
                     vol.Required(CONF_HOST): str,
+                    vol.Required("name", default="Daikin HTTP AC"): str,
                 }
             ),
             errors=errors,
         )
+
+    @staticmethod
+    @callback
+    def async_get_options_flow(config_entry):
+        return DaikinHttpOptionsFlowHandler(config_entry)
