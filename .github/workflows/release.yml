@@ -1,0 +1,43 @@
+name: Create Release from manifest.json
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - custom_components/daikin_http/manifest.json
+
+jobs:
+  release:
+    name: Auto Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Extract version from manifest.json
+        id: get_version
+        run: |
+          import json
+          with open("custom_components/daikin_http/manifest.json") as f:
+              manifest = json.load(f)
+              print(f"::set-output name=version::{manifest['version']}")
+        shell: python
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.get_version.outputs.version }}
+          name: Daikin HTTP v${{ steps.get_version.outputs.version }}
+          body: |
+            ⚙️ New release of the Daikin HTTP integration.
+            Version: `${{ steps.get_version.outputs.version }}`
+            Check commit history for changes.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
